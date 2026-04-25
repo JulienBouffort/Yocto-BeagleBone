@@ -44,9 +44,17 @@ jobs:
       - name: Setup build environment
         run: |
           source sources/poky/oe-init-build-env build
-          cp $GITHUB_WORKSPACE/build/conf/local.conf build/conf/local.conf || true
-          cp $GITHUB_WORKSPACE/build/conf/bblayers.conf build/conf/bblayers.conf || true
+          cp $GITHUB_WORKSPACE/build/conf/local.conf $GITHUB_WORKSPACE/build/conf/local.conf.bak
+          cp $GITHUB_WORKSPACE/build/conf/bblayers.conf $GITHUB_WORKSPACE/build/conf/bblayers.conf.bak
 
+      - name: Restore conf files
+        run: |
+          cp build/conf/local.conf.bak build/conf/local.conf
+          cp build/conf/bblayers.conf.bak build/conf/bblayers.conf
+          # Adapter les chemins pour GitHub Actions
+          sed -i 's|/home/yocto|/home/runner/work/Yocto-BeagleBone/Yocto-BeagleBone|g' build/conf/bblayers.conf
+
+   
       - name: Cache sstate
         uses: actions/cache@v4
         with:
