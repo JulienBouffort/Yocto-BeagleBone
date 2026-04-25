@@ -55,15 +55,15 @@ jobs:
 
       - name: Setup build environment
         run: |
-          source sources/poky/oe-init-build-env build
-
-          # Définir le workspace GitHub
-          WORKSPACE="/home/runner/work/Yocto-BeagleBone/Yocto-BeagleBone"
-
-          cat > build/conf/local.conf << EOF
+          WORKSPACE="${GITHUB_WORKSPACE}"
+          
+          # Initialiser l'environnement ET créer les fichiers dans le même shell
+          source sources/poky/oe-init-build-env ${WORKSPACE}/build
+          
+          cat > ${WORKSPACE}/build/conf/local.conf << EOF
           MACHINE = "beaglebone-yocto"
-          DL_DIR = "${GITHUB_WORKSPACE}/downloads"
-          SSTATE_DIR = "${GITHUB_WORKSPACE}/sstate-cache"
+          DL_DIR = "${WORKSPACE}/downloads"
+          SSTATE_DIR = "${WORKSPACE}/sstate-cache"
           BB_NUMBER_THREADS = "4"
           PARALLEL_MAKE = "-j4"
           IMAGE_FSTYPES = "ext4 wic wic.bmap"
@@ -76,7 +76,7 @@ jobs:
           SSTATE_MIRRORS = "file://.* http://sstate.yoctoproject.org/all/PATH;downloadfilename=PATH"
           EOF
 
-          cat > build/conf/bblayers.conf << EOF
+                    cat > ${WORKSPACE}/build/conf/bblayers.conf << EOF
           POKY_BBLAYERS_CONF_VERSION = "2"
           BBPATH = "\${TOPDIR}"
           BBFILES ?= ""
@@ -96,7 +96,7 @@ jobs:
 
       - name: Build core-image-minimal
         run: |
-          source sources/poky/oe-init-build-env build
+          source sources/poky/oe-init-build-env ${GITHUB_WORKSPACE}/build
           bitbake core-image-minimal
         env:
           LANG: en_US.UTF-8
