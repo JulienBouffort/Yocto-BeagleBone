@@ -1,0 +1,14 @@
+services:
+  yocto:
+    image: yocto-builder
+    container_name: yocto-beaglebone
+    volumes:
+      - ./sources:/home/yocto/sources
+      - ./build:/home/yocto/build
+      - ./downloads:/home/yocto/downloads
+      - ./sstate-cache:/home/yocto/sstate-cache
+    working_dir: /home/yocto
+    stdin_open: true
+    tty: true
+    environment:
+      - LANG=en_US.UTF-8
