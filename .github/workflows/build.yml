@@ -1,0 +1,78 @@
+name: Yocto BeagleBone Build
+
+on:
+  workflow_dispatch:  # Déclenchement manuel uniquement
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 350  # ~6h max
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Yocto dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y \
+            gawk wget git diffstat unzip texinfo \
+            gcc build-essential chrpath socat cpio \
+            python3 python3-pip python3-pexpect \
+            python3-git python3-jinja2 python3-subunit \
+            xz-utils zstd liblz4-tool lz4 bzip2 gzip tar \
+            debianutils iputils-ping file locales \
+            libacl1 libegl1-mesa libsdl1.2-dev mesa-common-dev \
+            curl rsync bc libssl-dev libelf-dev pkg-config
+          sudo locale-gen en_US.UTF-8
+
+      - name: Clone Poky
+        run: |
+          git clone -b scarthgap git://git.yoctoproject.org/poky.git sources/poky
+
+      - name: Clone meta-arm
+        run: |
+          git clone -b scarthgap git://git.yoctoproject.org/meta-arm.git sources/meta-arm
+
+      - name: Clone meta-ti
+        run: |
+          git clone -b scarthgap https://git.yoctoproject.org/meta-ti.git sources/meta-ti
+
+      - name: Clone meta-openembedded
+        run: |
+          git clone -b scarthgap https://github.com/openembedded/meta-openembedded.git sources/meta-openembedded
+
+      - name: Setup build environment
+        run: |
+          source sources/poky/oe-init-build-env build
+          cp $GITHUB_WORKSPACE/build/conf/local.conf build/conf/local.conf || true
+          cp $GITHUB_WORKSPACE/build/conf/bblayers.conf build/conf/bblayers.conf || true
+
+      - name: Cache sstate
+        uses: actions/cache@v4
+        with:
+          path: sstate-cache
+          key: sstate-beaglebone-${{ hashFiles('build/conf/local.conf') }}
+          restore-keys: |
+            sstate-beaglebone-
+
+      - name: Build core-image-minimal
+        run: |
+          source sources/poky/oe-init-build-env build
+          # Utiliser le miroir sstate public pour accélérer
+          echo 'SSTATE_MIRRORS = "file://.* http://sstate.yoctoproject.org/all/PATH;downloadfilename=PATH"' >> build/conf/local.conf
+          # Limiter les threads pour la stabilité
+          echo 'BB_NUMBER_THREADS = "4"' >> build/conf/local.conf
+          echo 'PARALLEL_MAKE = "-j4"' >> build/conf/local.conf
+          bitbake core-image-minimal
+        env:
+          LANG: en_US.UTF-8
+
+      - name: Upload image
+        uses: actions/upload-artifact@v4
+        with:
+          name: beaglebone-image
+          path: |
+            build/tmp/deploy/images/beaglebone-yocto/*.wic
+            build/tmp/deploy/images/beaglebone-yocto/*.wic.bmap
+            build/tmp/deploy/images/beaglebone-yocto/*.ext4
+          retention-days: 7
