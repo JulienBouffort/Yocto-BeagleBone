@@ -1,12 +1,12 @@
 name: Yocto BeagleBone Build
 
 on:
-  workflow_dispatch:  # Déclenchement manuel uniquement
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-22.04
-    timeout-minutes: 350  # ~6h max
+    timeout-minutes: 350
 
     steps:
       - name: Checkout
@@ -25,57 +25,84 @@ jobs:
             curl rsync bc libssl-dev libelf-dev pkg-config
           sudo locale-gen en_US.UTF-8
 
-      - name: Clone Poky
-        run: |
-          git clone -b scarthgap git://git.yoctoproject.org/poky.git sources/poky
+      - name: Cache downloads
+        uses: actions/cache@v4
+        with:
+          path: downloads
+          key: yocto-downloads-${{ hashFiles('sources/meta-wfb-ng/**/*.bb') }}
+          restore-keys: |
+            yocto-downloads-
 
-      - name: Clone meta-arm
-        run: |
-          git clone -b scarthgap git://git.yoctoproject.org/meta-arm.git sources/meta-arm
-
-      - name: Clone meta-ti
-        run: |
-          git clone -b scarthgap https://git.yoctoproject.org/meta-ti.git sources/meta-ti
-
-      - name: Clone meta-openembedded
-        run: |
-          git clone -b scarthgap https://github.com/openembedded/meta-openembedded.git sources/meta-openembedded
-
-      - name: Setup build environment
-        run: |
-          source sources/poky/oe-init-build-env build
-          cp $GITHUB_WORKSPACE/build/conf/local.conf $GITHUB_WORKSPACE/build/conf/local.conf.bak
-          cp $GITHUB_WORKSPACE/build/conf/bblayers.conf $GITHUB_WORKSPACE/build/conf/bblayers.conf.bak
-
-      - name: Restore conf files
-        run: |
-          cp build/conf/local.conf.bak build/conf/local.conf
-          cp build/conf/bblayers.conf.bak build/conf/bblayers.conf
-          # Adapter les chemins pour GitHub Actions
-          sed -i 's|/home/yocto|/home/runner/work/Yocto-BeagleBone/Yocto-BeagleBone|g' build/conf/bblayers.conf
-
-   
       - name: Cache sstate
         uses: actions/cache@v4
         with:
           path: sstate-cache
-          key: sstate-beaglebone-${{ hashFiles('build/conf/local.conf') }}
+          key: yocto-sstate-beaglebone-${{ hashFiles('sources/meta-wfb-ng/**/*.bb', 'build/conf/local.conf') }}
           restore-keys: |
-            sstate-beaglebone-
+            yocto-sstate-beaglebone-
+
+      - name: Clone Poky
+        run: git clone -b scarthgap git://git.yoctoproject.org/poky.git sources/poky
+
+      - name: Clone meta-arm
+        run: git clone -b scarthgap git://git.yoctoproject.org/meta-arm.git sources/meta-arm
+
+      - name: Clone meta-ti
+        run: git clone -b scarthgap https://git.yoctoproject.org/meta-ti.git sources/meta-ti
+
+      - name: Clone meta-openembedded
+        run: git clone -b scarthgap https://github.com/openembedded/meta-openembedded.git sources/meta-openembedded
+
+      - name: Setup build environment
+        run: |
+          source sources/poky/oe-init-build-env build
+
+          # Définir le workspace GitHub
+          WORKSPACE="/home/runner/work/Yocto-BeagleBone/Yocto-BeagleBone"
+
+          cat > build/conf/local.conf << EOF
+          MACHINE = "beaglebone-yocto"
+          DL_DIR = "${GITHUB_WORKSPACE}/downloads"
+          SSTATE_DIR = "${GITHUB_WORKSPACE}/sstate-cache"
+          BB_NUMBER_THREADS = "4"
+          PARALLEL_MAKE = "-j4"
+          IMAGE_FSTYPES = "ext4 wic wic.bmap"
+          IMAGE_INSTALL:append = " wfb-ng rtl8812eu iw iwd python3 python3-pip cmake git wget gcc make"
+          DISTRO = "poky"
+          PACKAGE_CLASSES = "package_rpm"
+          LICENSE_FLAGS_ACCEPTED = "commercial"
+          INHERIT += "rm_work"
+          RM_WORK_EXCLUDE += "wfb-ng rtl8812eu"
+          SSTATE_MIRRORS = "file://.* http://sstate.yoctoproject.org/all/PATH;downloadfilename=PATH"
+          EOF
+
+          cat > build/conf/bblayers.conf << EOF
+          POKY_BBLAYERS_CONF_VERSION = "2"
+          BBPATH = "\${TOPDIR}"
+          BBFILES ?= ""
+          BBLAYERS ?= " \
+            ${WORKSPACE}/sources/poky/meta \
+            ${WORKSPACE}/sources/poky/meta-poky \
+            ${WORKSPACE}/sources/poky/meta-yocto-bsp \
+            ${WORKSPACE}/sources/meta-arm/meta-arm \
+            ${WORKSPACE}/sources/meta-arm/meta-arm-toolchain \
+            ${WORKSPACE}/sources/meta-openembedded/meta-oe \
+            ${WORKSPACE}/sources/meta-openembedded/meta-python \
+            ${WORKSPACE}/sources/meta-openembedded/meta-networking \
+            ${WORKSPACE}/sources/meta-ti/meta-ti-bsp \
+            ${WORKSPACE}/sources/meta-wfb-ng \
+            "
+          EOF
 
       - name: Build core-image-minimal
         run: |
           source sources/poky/oe-init-build-env build
-          # Utiliser le miroir sstate public pour accélérer
-          echo 'SSTATE_MIRRORS = "file://.* http://sstate.yoctoproject.org/all/PATH;downloadfilename=PATH"' >> build/conf/local.conf
-          # Limiter les threads pour la stabilité
-          echo 'BB_NUMBER_THREADS = "4"' >> build/conf/local.conf
-          echo 'PARALLEL_MAKE = "-j4"' >> build/conf/local.conf
           bitbake core-image-minimal
         env:
           LANG: en_US.UTF-8
 
       - name: Upload image
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: beaglebone-image
