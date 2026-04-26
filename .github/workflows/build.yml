@@ -25,14 +25,6 @@ jobs:
             curl rsync bc libssl-dev libelf-dev pkg-config
           sudo locale-gen en_US.UTF-8
 
-      - name: Cache downloads
-        uses: actions/cache@v4
-        with:
-          path: downloads
-          key: yocto-downloads-${{ hashFiles('sources/meta-wfb-ng/**/*.bb') }}
-          restore-keys: |
-            yocto-downloads-
-
       - name: Cache sstate
         uses: actions/cache@v4
         with:
@@ -40,7 +32,18 @@ jobs:
           key: yocto-sstate-beaglebone-${{ hashFiles('sources/meta-wfb-ng/**/*.bb', 'build/conf/local.conf') }}
           restore-keys: |
             yocto-sstate-beaglebone-
+          save-always: true   # ← sauvegarder même si le build échoue
 
+      - name: Cache downloads
+        uses: actions/cache@v4
+        with:
+          path: downloads
+          key: yocto-downloads-${{ hashFiles('sources/meta-wfb-ng/**/*.bb') }}
+          restore-keys: |
+            yocto-downloads-
+          save-always: true   # ← idem*
+          
+          
       - name: Clone Poky
         run: git clone -b scarthgap git://git.yoctoproject.org/poky.git sources/poky
 

@@ -2,7 +2,7 @@ SUMMARY = "WFB-NG - Wifibroadcast Next Generation"
 DESCRIPTION = "Liaison video longue portee pour drones FPV via WiFi monitor mode"
 HOMEPAGE = "https://github.com/svpcom/wfb-ng"
 LICENSE = "GPL-2.0-only"
-LIC_FILES_CHKSUM = "file://README.md;md5=fe7c8fa8f5a2fd29afa2b062085ffcab"
+LIC_FILES_CHKSUM = "file://LICENSE.txt;md5=84dcc94da3adb52b53ae4fa38fe49e5d"
 
 DEPENDS = " \
     libpcap \
