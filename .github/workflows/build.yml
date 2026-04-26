@@ -11,6 +11,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: false
 
       - name: Install Yocto dependencies
         run: |
@@ -43,7 +45,7 @@ jobs:
             yocto-downloads-
           save-always: true   # ← idem*
           
-          
+
       - name: Clone Poky
         run: git clone -b scarthgap git://git.yoctoproject.org/poky.git sources/poky
 
