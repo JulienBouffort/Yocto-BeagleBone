@@ -4,3 +4,8 @@ downloads/
 sstate-cache/
 *.pyc
 __pycache__/
+sources/poky/
+sources/meta-arm/
+sources/meta-ti/
+sources/meta-openembedded/
+sources/meta-ros/
