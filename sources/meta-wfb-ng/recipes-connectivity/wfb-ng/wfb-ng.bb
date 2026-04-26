@@ -8,6 +8,7 @@ DEPENDS = " \
     libpcap \
     openssl \
     libsodium \
+    libevent \
     python3 \
     python3-twisted \
     python3-pyroute2 \
@@ -17,6 +18,7 @@ RDEPENDS:${PN} = " \
     libpcap \
     openssl \
     libsodium \
+    libevent \
     python3 \
     python3-twisted \
     python3-pyroute2 \
@@ -40,37 +42,35 @@ export SOURCE_DATE_EPOCH = "0"
 export VERSION = "24.04"
 
 do_compile() {
-    oe_runmake all \
+    # Builder uniquement les binaires nécessaires pour FPV
+    # On exclut wfb_rtsp (gstreamer) et test (catch2)
+    oe_runmake wfb_rx wfb_tx wfb_keygen wfb_tun wfb_tx_cmd \
         CC="${CC}" \
         CXX="${CXX}" \
-        PKG_CONFIG="${PKG_CONFIG}" \
-        PREFIX="/usr"
+        PKG_CONFIG="${PKG_CONFIG}"
 }
 
 do_install() {
-
-    # Installer les binaires manuellement
     install -d ${D}${bindir}
     install -m 0755 ${S}/wfb_tx ${D}${bindir}/wfb_tx
     install -m 0755 ${S}/wfb_rx ${D}${bindir}/wfb_rx
     install -m 0755 ${S}/wfb_tun ${D}${bindir}/wfb_tun
     install -m 0755 ${S}/wfb_keygen ${D}${bindir}/wfb_keygen
+    install -m 0755 ${S}/wfb_tx_cmd ${D}${bindir}/wfb_tx_cmd
 
     install -d ${D}${systemd_system_unitdir}
-    install -m 0644 ${S}/scripts/wifibroadcast.service \
+    install -m 0644 ${S}/scripts/systemd/wifibroadcast.service \
         ${D}${systemd_system_unitdir}/wifibroadcast.service
 
     install -d ${D}${sysconfdir}/wifibroadcast
-    install -m 0644 ${S}/scripts/bind \
-        ${D}${sysconfdir}/wifibroadcast/ || true
-
-
 }
 
 FILES:${PN} += " \
     ${bindir}/wfb_tx \
     ${bindir}/wfb_rx \
     ${bindir}/wfb_tun \
+    ${bindir}/wfb_keygen \
+    ${bindir}/wfb_tx_cmd \
     ${sysconfdir}/wifibroadcast/ \
     ${systemd_system_unitdir}/wifibroadcast.service \
 "
