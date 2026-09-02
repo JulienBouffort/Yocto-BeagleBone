@@ -46,7 +46,7 @@ jobs:
           save-always: true   # ← idem
 
       - name: Clone Poky
-        run: git clone -b scarthgap git://git.yoctoproject.org/poky.git sources/poky
+        run: git clone -b scarthgap https://github.com/yoctoproject/poky.git sources/poky
 
       - name: Clone meta-arm
         run: git clone -b scarthgap git://git.yoctoproject.org/meta-arm.git sources/meta-arm
