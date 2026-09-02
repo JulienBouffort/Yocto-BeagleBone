@@ -14,6 +14,21 @@ jobs:
         with:
           submodules: false
 
+      # 1. Libérer l'espace disque sur le runner GitHub
+      - name: Free Disk Space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          df -h
+
+      # 2. Fix AppArmor userns pour Ubuntu 24.04
+      - name: Fix AppArmor userns for Yocto
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
       - name: Install Yocto dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y \
@@ -34,7 +49,7 @@ jobs:
           key: yocto-sstate-beaglebone-${{ hashFiles('sources/meta-ros/**/*.bb', 'build/conf/local.conf') }}
           restore-keys: |
             yocto-sstate-beaglebone-
-          save-always: true   # ← sauvegarder même si le build échoue
+          save-always: true
 
       - name: Cache downloads
         uses: actions/cache@v4
@@ -43,28 +58,19 @@ jobs:
           key: yocto-downloads-${{ hashFiles('sources/meta-ros/**/*.bb') }}
           restore-keys: |
             yocto-downloads-
-          save-always: true   # ← idem
+          save-always: true
 
-      - name: Clone Poky
-        run: git clone -b scarthgap https://github.com/yoctoproject/poky.git sources/poky
-
-      - name: Clone meta-arm
-        run: git clone -b scarthgap https://git.yoctoproject.org/meta-arm.git sources/meta-arm
-
-      - name: Clone meta-ti
-        run: git clone -b scarthgap https://git.yoctoproject.org/meta-ti.git sources/meta-ti
-
-      - name: Clone meta-openembedded
-        run: git clone -b scarthgap https://github.com/openembedded/meta-openembedded.git sources/meta-openembedded
-
-      - name: Clone meta-ros
-        run: git clone -b scarthgap https://github.com/ros/meta-ros.git sources/meta-ros
+      - name: Clone repositories
+        run: |
+          git clone -b scarthgap https://github.com/yoctoproject/poky.git sources/poky
+          git clone -b scarthgap https://git.yoctoproject.org/meta-arm.git sources/meta-arm
+          git clone -b scarthgap https://git.yoctoproject.org/meta-ti.git sources/meta-ti
+          git clone -b scarthgap https://github.com/openembedded/meta-openembedded.git sources/meta-openembedded
+          git clone -b scarthgap https://github.com/ros/meta-ros.git sources/meta-ros
 
       - name: Setup build environment
         run: |
           WORKSPACE="${GITHUB_WORKSPACE}"
-
-          # Initialiser l'environnement ET créer les fichiers dans le même shell
           source sources/poky/oe-init-build-env ${WORKSPACE}/build
 
           cat > ${WORKSPACE}/build/conf/local.conf << EOF
@@ -78,7 +84,10 @@ jobs:
           PACKAGE_CLASSES = "package_rpm"
           LICENSE_FLAGS_ACCEPTED = "commercial"
           INHERIT += "rm_work"
-          SSTATE_MIRRORS = "file://.* http://sstate.yoctoproject.org/all/PATH;downloadfilename=PATH"
+
+          # Configuration CDN & suppression de l'avertissement Hashserve
+          BB_HASHSERVE = ""
+          SSTATE_MIRRORS = "file://.* https://cdn.yoctoproject.org/sstate/all/PATH;downloadfilename=PATH"
 
           ROS_DISTRO = "jazzy"
           EXTRA_IMAGE_FEATURES:append = " ros-implicit-workspace"
