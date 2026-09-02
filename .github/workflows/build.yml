@@ -90,7 +90,6 @@ jobs:
           SSTATE_MIRRORS = "file://.* https://cdn.yoctoproject.org/sstate/all/PATH;downloadfilename=PATH"
 
           ROS_DISTRO = "jazzy"
-          EXTRA_IMAGE_FEATURES:append = " ros-implicit-workspace"
           IMAGE_INSTALL:append = " \
               python3 \
               python3-pip \
