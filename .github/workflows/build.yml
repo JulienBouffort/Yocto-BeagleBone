@@ -86,7 +86,7 @@ jobs:
           INHERIT += "rm_work"
 
           # Configuration CDN & suppression de l'avertissement Hashserve
-          BB_HASHSERVE = ""
+          BB_HASHSERVE = "auto"
           SSTATE_MIRRORS = "file://.* https://cdn.yoctoproject.org/sstate/all/PATH;downloadfilename=PATH"
 
           ROS_DISTRO = "jazzy"
