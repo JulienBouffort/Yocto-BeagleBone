@@ -1,5 +1,6 @@
 services:
   yocto:
+    build: .
     image: yocto-builder
     container_name: yocto-beaglebone
     volumes:

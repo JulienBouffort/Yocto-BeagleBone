@@ -5,7 +5,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 350
 
     steps:
@@ -31,7 +31,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: sstate-cache
-          key: yocto-sstate-beaglebone-${{ hashFiles('sources/meta-wfb-ng/**/*.bb', 'build/conf/local.conf') }}
+          key: yocto-sstate-beaglebone-${{ hashFiles('sources/meta-ros/**/*.bb', 'build/conf/local.conf') }}
           restore-keys: |
             yocto-sstate-beaglebone-
           save-always: true   # ← sauvegarder même si le build échoue
@@ -40,11 +40,10 @@ jobs:
         uses: actions/cache@v4
         with:
           path: downloads
-          key: yocto-downloads-${{ hashFiles('sources/meta-wfb-ng/**/*.bb') }}
+          key: yocto-downloads-${{ hashFiles('sources/meta-ros/**/*.bb') }}
           restore-keys: |
             yocto-downloads-
-          save-always: true   # ← idem*
-          
+          save-always: true   # ← idem
 
       - name: Clone Poky
         run: git clone -b scarthgap git://git.yoctoproject.org/poky.git sources/poky
@@ -58,13 +57,16 @@ jobs:
       - name: Clone meta-openembedded
         run: git clone -b scarthgap https://github.com/openembedded/meta-openembedded.git sources/meta-openembedded
 
+      - name: Clone meta-ros
+        run: git clone -b scarthgap https://github.com/ros/meta-ros.git sources/meta-ros
+
       - name: Setup build environment
         run: |
           WORKSPACE="${GITHUB_WORKSPACE}"
-          
+
           # Initialiser l'environnement ET créer les fichiers dans le même shell
           source sources/poky/oe-init-build-env ${WORKSPACE}/build
-          
+
           cat > ${WORKSPACE}/build/conf/local.conf << EOF
           MACHINE = "beaglebone-yocto"
           DL_DIR = "${WORKSPACE}/downloads"
@@ -72,16 +74,38 @@ jobs:
           BB_NUMBER_THREADS = "4"
           PARALLEL_MAKE = "-j4"
           IMAGE_FSTYPES = "ext4 wic wic.bmap"
-          IMAGE_INSTALL:append = " wfb-ng rtl8812eu iw iwd python3 python3-pip cmake git wget gcc make"
           DISTRO = "poky"
           PACKAGE_CLASSES = "package_rpm"
           LICENSE_FLAGS_ACCEPTED = "commercial"
           INHERIT += "rm_work"
-          RM_WORK_EXCLUDE += "wfb-ng rtl8812eu"
           SSTATE_MIRRORS = "file://.* http://sstate.yoctoproject.org/all/PATH;downloadfilename=PATH"
+
+          ROS_DISTRO = "jazzy"
+          EXTRA_IMAGE_FEATURES:append = " ros-implicit-workspace"
+          IMAGE_INSTALL:append = " \
+              python3 \
+              python3-pip \
+              cmake \
+              git \
+              wget \
+              gcc \
+              make \
+              ros-core \
+              demo-nodes-cpp \
+              demo-nodes-py \
+              ros2cli \
+              ros2launch \
+              ros2bag \
+              rclcpp \
+              rclpy \
+              std-msgs \
+              geometry-msgs \
+              sensor-msgs \
+              rmw-cyclonedds-cpp \
+          "
           EOF
 
-                    cat > ${WORKSPACE}/build/conf/bblayers.conf << EOF
+          cat > ${WORKSPACE}/build/conf/bblayers.conf << EOF
           POKY_BBLAYERS_CONF_VERSION = "2"
           BBPATH = "\${TOPDIR}"
           BBFILES ?= ""
@@ -94,8 +118,11 @@ jobs:
             ${WORKSPACE}/sources/meta-openembedded/meta-oe \
             ${WORKSPACE}/sources/meta-openembedded/meta-python \
             ${WORKSPACE}/sources/meta-openembedded/meta-networking \
+            ${WORKSPACE}/sources/meta-openembedded/meta-filesystems \
             ${WORKSPACE}/sources/meta-ti/meta-ti-bsp \
-            ${WORKSPACE}/sources/meta-wfb-ng \
+            ${WORKSPACE}/sources/meta-ros/meta-ros-common \
+            ${WORKSPACE}/sources/meta-ros/meta-ros2 \
+            ${WORKSPACE}/sources/meta-ros/meta-ros2-jazzy \
             "
           EOF
 

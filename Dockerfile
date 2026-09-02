@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=en_US.UTF-8
@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
     python3-git python3-jinja2 python3-subunit \
     xz-utils zstd liblz4-tool lz4 bzip2 gzip tar \
     debianutils iputils-ping file locales \
-    libacl1 libegl1-mesa libsdl1.2-dev mesa-common-dev \
+    libacl1 libgl1 libgl1-mesa-dev libsdl1.2-dev mesa-common-dev \
     curl rsync \
     bc libssl-dev libelf-dev \
     pkg-config \
